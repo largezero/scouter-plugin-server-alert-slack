@@ -9,7 +9,8 @@
     <property name="src" location="src"/>
     <property name="build" location="build"/>
     <property name="dist" location="dist"/>
-    <property name="scouter.server.lib" location="${env.SCOUTER_SERVER_HOME}/lib/scouter.server-0.4.13.jar"/>
+    <property name="env.SCOUTER_SERVER_HOME" location="D:/UTIL/scouter/server"/>
+    <property name="scouter.server.lib" location="${env.SCOUTER_SERVER_HOME}/lib/scouter-server-1.8.0.RC2.jar"/>
 
     <target name="init">
         <!-- Create the time stamp -->
@@ -38,7 +39,7 @@
             description="generate the distribution">
 
 
-        <jar destfile="${env.SCOUTER_SERVER_HOME}/lib/scouter-plugin-server-alert-slack.jar">
+        <jar destfile="${env.SCOUTER_SERVER_HOME}/build/scouter-plugin-server-alert-slack.jar">
             <fileset dir="${build}"/>
         </jar>
 
