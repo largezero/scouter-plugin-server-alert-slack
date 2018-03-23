@@ -19,6 +19,7 @@
 package scouter.plugin.server.alert.slack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -115,6 +116,8 @@ public class SlackPlugin {
 		if (conf.getBoolean("ext_plugin_slack_send_alert", false)) {
 
 			int level = conf.getInt("ext_plugin_slack_level", 0);
+			
+			
 			// Get log level (0 : INFO, 1 : WARN, 2 : ERROR, 3 : FATAL)
 			if(level <= pack.level){
 				new Thread(){
@@ -126,65 +129,87 @@ public class SlackPlugin {
 							String iconURL = conf.getValue("ext_plugin_slack_icon_url");
 							String iconEmoji = conf.getValue("ext_plugin_slack_icon_emoji");
 
+							String targetServerList = conf.getValue("ext_plugin_slack_server_list");
+							String[] serverList = targetServerList.split(",");
+							List<String> noticeServerList = null;
+							if(targetServerList !=null && !targetServerList.equals("")) {
+								serverList = targetServerList.split(",");
+								noticeServerList = new ArrayList<String>(Arrays.asList(serverList));
+							}
+
 							assert webhookURL != null;
 
 							// Get the agent Name
-            	String name = AgentManager.getAgentName(pack.objHash) == null ? "N/A" : AgentManager.getAgentName(pack.objHash);
-
-            	if (name.equals("N/A") && pack.message.endsWith("connected.")) {
-        			int idx = pack.message.indexOf("connected");
-            		if (pack.message.indexOf("reconnected") > -1) {
-            			name = pack.message.substring(0, idx - 6);
-            		} else {
-            			name = pack.message.substring(0, idx - 4);
-            		}
-            	}
-
-            	String title = pack.title;
-                String msg = pack.message;
-                if (title.equals("INACTIVE_OBJECT")) {
-                	title = "An object has been inactivated.";
-                	msg = pack.message.substring(0, pack.message.indexOf("OBJECT") - 1);
-                }
-
-            	// Make message contents
-                String contents = "[TYPE] : " + pack.objType.toUpperCase() + "\n" +
-                               	  "[NAME] : " + name + "\n" +
-                                  "[LEVEL] : " + AlertLevel.getName(pack.level) + "\n" +
-                                  "[TITLE] : " + title + "\n" +
-                                  "[MESSAGE] : " + msg;
-
-                Message message = new Message(contents, channel, botName, iconURL, iconEmoji);
-                String payload = new Gson().toJson(message);
-
-                if(conf.getBoolean("ext_plugin_slack_debug", false)){
-                	println("WebHookURL : "+webhookURL);
-                	println("param : "+payload);
-                }
-
-                HttpPost post = new HttpPost(webhookURL);
-                post.addHeader("Content-Type","application/json");
-								// charset set utf-8
-								post.setEntity(new StringEntity(payload, "utf-8"));
-
-                CloseableHttpClient client = HttpClientBuilder.create().build();
-
-                // send the post request
-                HttpResponse response = client.execute(post);
-
-                if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                    println("Slack message sent to [" + channel + "] successfully.");
-                } else {
-                    println("Slack message sent failed. Verify below information.");
-                    println("[WebHookURL] : " + webhookURL);
-                    println("[Message] : " + payload);
-                    println("[Reason] : " + EntityUtils.toString(response.getEntity(), "UTF-8"));
-                }
+			            	String name = AgentManager.getAgentName(pack.objHash) == null ? "N/A" : AgentManager.getAgentName(pack.objHash);
+			            	
+			            	boolean isNotice = false;
+			            	
+			            	if(noticeServerList == null) {
+			            		isNotice = true;
+			            	} else {
+			            		if(noticeServerList.contains(name)) {
+			            			isNotice = true;
+			            		}
+			            	}
+			            	
+			            	if(isNotice) {
+			            		
+			            		if (name.equals("N/A") && pack.message.endsWith("connected.")) {
+			            			int idx = pack.message.indexOf("connected");
+			            			if (pack.message.indexOf("reconnected") > -1) {
+			            				name = pack.message.substring(0, idx - 6);
+			            			} else {
+			            				name = pack.message.substring(0, idx - 4);
+			            			}
+			            		}
+			            		
+			            		String title = pack.title;
+			            		String msg = pack.message;
+			            		if (title.equals("INACTIVE_OBJECT")) {
+			            			title = "An object has been inactivated.";
+			            			msg = pack.message.substring(0, pack.message.indexOf("OBJECT") - 1);
+			            		}
+			            		
+			            		// Make message contents
+			            		String contents = "[TYPE] : " + pack.objType.toUpperCase() + "\n" +
+			            				"[NAME] : " + name + "\n" +
+			            				"[LEVEL] : " + AlertLevel.getName(pack.level) + "\n" +
+			            				"[TITLE] : " + title + "\n" +
+			            				"[MESSAGE] : " + msg;
+			            		
+			            		Message message = new Message(contents, channel, botName, iconURL, iconEmoji);
+			            		String payload = new Gson().toJson(message);
+			            		
+			            		if(conf.getBoolean("ext_plugin_slack_debug", false)){
+			            			println("WebHookURL : "+webhookURL);
+			            			println("param : "+payload);
+			            		}
+			            		
+			            		HttpPost post = new HttpPost(webhookURL);
+			            		post.addHeader("Content-Type","application/json");
+			            		// charset set utf-8
+			            		post.setEntity(new StringEntity(payload, "utf-8"));
+			            		
+			            		CloseableHttpClient client = HttpClientBuilder.create().build();
+			            		
+			            		// send the post request
+			            		HttpResponse response = client.execute(post);
+			            		
+			            		if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+			            			println("Slack message sent to [" + channel + "] successfully.");
+			            		} else {
+			            			println("Slack message sent failed. Verify below information.");
+			            			println("[WebHookURL] : " + webhookURL);
+			            			println("[Message] : " + payload);
+			            			println("[Reason] : " + EntityUtils.toString(response.getEntity(), "UTF-8"));
+			            		}
+			            	}
+			
 						}catch(Exception e){
 							println("[Error] : " + e.getMessage());
-            	if(conf._trace) {
-                    e.printStackTrace();
-            	}
+							if(conf._trace) {
+								e.printStackTrace();
+							}
 						}
 					}
 				}.start();
